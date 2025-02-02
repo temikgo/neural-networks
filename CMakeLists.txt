@@ -3,4 +3,6 @@ project(neural-networks)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(neural-networks src/main.cpp)
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+
+add_executable(neural-networks ${SOURCES})
