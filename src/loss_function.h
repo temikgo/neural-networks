@@ -1,25 +1,27 @@
 #pragma once
 
-#include <vector>
-
-#include "helpers.h"
+#include "linalg.h"
 
 namespace nn {
 
 class LossFunction {
+    using DistFuncType = std::function<Vector(const Matrix&, const Matrix&)>;
+    using GradFuncType = std::function<Matrix(const Matrix&, const Matrix&)>;
+
 public:
-    virtual Number Dist(const Vector& x, const Vector& y) const = 0;
-    virtual Number Calc(const Vector& x, const Vector& y) const = 0;
-};
+    LossFunction(DistFuncType&& distFunc, GradFuncType&& gradFunc);
 
-class MSELoss : public LossFunction {
-    Number Dist(const Vector& x, const Vector& y) const override final;
-    Number Calc(const Vector& x, const Vector& y) const override final;
-};
+    Vector Dist(const Matrix& x, const Matrix& y) const;
+    Matrix Grad(const Matrix& x, const Matrix& y) const;
 
-class MAELoss : public LossFunction {
-    Number Dist(const Vector& x, const Vector& y) const override final;
-    Number Calc(const Vector& x, const Vector& y) const override final;
+    static LossFunction MSE() {
+        return LossFunction([](const Matrix& x, const Matrix& y) { return x; },
+                            [](const Matrix& x, const Matrix& y) { return x; });
+    }
+
+private:
+    DistFuncType distFunc_;
+    GradFuncType gradFunc_;
 };
 
 }  // namespace nn

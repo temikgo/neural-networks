@@ -1,6 +1,12 @@
-#include <iostream>
+#include "except.h"
+#include "tests/test_runner.h"
 
 int main() {
-    std::cout << "тут надо собрать сетку, затрейнить, чекнуть насколько хорошо на MNIST\n";
+    try {
+        nn::TestRunner runner;
+        runner.RunAllTests();
+    } catch (...) {
+        except::react();
+    }
     return 0;
 }

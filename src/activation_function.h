@@ -1,27 +1,19 @@
 #pragma once
 
 #include <functional>
-#include <vector>
 
-#include "helpers.h"
+#include "layer.h"
 
 namespace nn {
 
-class ActivationFunction {
-    using FuncType = std::function<Number(Number)>;
+class ActivationFunction : public Layer {
+    using FuncType = std::function<double(double)>;
 
 public:
-    ActivationFunction() = delete;
-    ActivationFunction(FuncType function, FuncType derivative)
-        : function_(function), derivative_(derivative) {}
-    ActivationFunction(const ActivationFunction&) = default;
-    ActivationFunction(ActivationFunction&&) noexcept = default;
-    ActivationFunction& operator=(const ActivationFunction&) = default;
-    ActivationFunction& operator=(ActivationFunction&&) noexcept = default;
-    ~ActivationFunction() = default;
+    ActivationFunction(FuncType&& function, FuncType&& derivative);
 
-    Vector EvalF(const Vector& v) const;
-    Vector EvalD(const Vector& v) const;
+    Matrix ForwardPass(const Matrix& x) const override;
+    Matrix BackwardPass(const Matrix& x, const Matrix& u) override;
 
 private:
     FuncType function_;

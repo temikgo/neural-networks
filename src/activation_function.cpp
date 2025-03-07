@@ -1,19 +1,19 @@
 #include "activation_function.h"
 
-#include <algorithm>
-
 namespace nn {
 
-Vector ActivationFunction::EvalF(const Vector& v) const {
-    Vector evaluated(v.size());
-    std::transform(v.begin(), v.end(), evaluated.begin(), function_);
-    return evaluated;
+ActivationFunction::ActivationFunction(FuncType&& function,
+                                       FuncType&& derivative)
+    : function_(std::move(function)), derivative_(std::move(derivative)) {}
+
+Matrix ActivationFunction::ForwardPass(const Matrix& x) const {
+    assert(function_);
+    return x.unaryExpr(function_);
 }
 
-Vector ActivationFunction::EvalD(const Vector& v) const {
-    Vector evaluated(v.size());
-    std::transform(v.begin(), v.end(), evaluated.begin(), derivative_);
-    return evaluated;
+Matrix ActivationFunction::BackwardPass(const Matrix& x, const Matrix& u) {
+    assert(derivative_);
+    return x.unaryExpr(derivative_);
 }
 
 }  // namespace nn
