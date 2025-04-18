@@ -1,8 +1,9 @@
-#neural - networks
-neural networks from scratch
+# neural networks from scratch
 
-    Глобальный стейт сейчас такой
-    : я оч плохо,
-      поверхностно,
-      кусками понимаю,
-      что хочется сделать.Исправлю это путём очного общения.
+```bash
+mkdir build
+cd build
+cmake ..
+make
+./neural-networks
+```
