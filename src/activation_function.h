@@ -1,23 +1,27 @@
 #pragma once
 
-#include <functional>
-
-#include "layer.h"
+#include "linalg.h"
 
 namespace nn {
 
-class ActivationFunction : public Layer {
-    using FuncType = std::function<double(double)>;
+class ActivationFunction {
+    using ForwardFunc = std::function<Vector(const Vector&)>;
+    using BackwardFunc = std::function<Matrix(const Vector&)>;
 
 public:
-    ActivationFunction(FuncType&& function, FuncType&& derivative);
+    ActivationFunction(ForwardFunc&& function, BackwardFunc&& derivative);
+    Vector Compute(const Vector& x) const;
+    Matrix ComputeGradient(const Vector& x) const;
 
-    Matrix ForwardPass(const Matrix& x) const override;
-    Matrix BackwardPass(const Matrix& x, const Matrix& u) override;
+    static ActivationFunction Id();
+    static ActivationFunction Sigmoid();
+    static ActivationFunction Tanh();
+    static ActivationFunction ReLU();
+    static ActivationFunction Softmax();
 
 private:
-    FuncType function_;
-    FuncType derivative_;
+    ForwardFunc function_;
+    BackwardFunc derivative_;
 };
 
 }  // namespace nn

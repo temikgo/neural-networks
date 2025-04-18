@@ -5,3 +5,8 @@ TabWidth: 4
 UseTab: Never
 
 AccessModifierOffset: -4
+
+InsertNewlineAtEOF: true
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: false

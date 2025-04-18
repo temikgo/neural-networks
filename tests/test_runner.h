@@ -11,7 +11,7 @@ public:
     TestRunner();
 
     void RunAllTests() const;
-    void RunTests() const;
+    void RunTest(size_t id) const;
 
 private:
     std::vector<Test> tests_;

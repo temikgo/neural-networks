@@ -5,23 +5,23 @@
 namespace nn {
 
 class LossFunction {
-    using DistFuncType = std::function<Vector(const Matrix&, const Matrix&)>;
-    using GradFuncType = std::function<Matrix(const Matrix&, const Matrix&)>;
+    using PenaltyFunc = std::function<Scalar(const Vector&, const Vector&)>;
+    using GradientFunc = std::function<Vector(const Matrix&, const Matrix&)>;
 
 public:
-    LossFunction(DistFuncType&& distFunc, GradFuncType&& gradFunc);
+    LossFunction(PenaltyFunc&& penaltyFunc, GradientFunc&& gradientFunc);
 
-    Vector Dist(const Matrix& x, const Matrix& y) const;
-    Matrix Grad(const Matrix& x, const Matrix& y) const;
+    Scalar GetPenalty(const Vector& z, const Vector& y) const;
+    Scalar GetLoss(const VectorBatch& z, const VectorBatch& y) const;
+    Vector GetGradient(const Vector& z, const Vector& y) const;
 
-    static LossFunction MSE() {
-        return LossFunction([](const Matrix& x, const Matrix& y) { return x; },
-                            [](const Matrix& x, const Matrix& y) { return x; });
-    }
+    static LossFunction MSE();
+    static LossFunction MAE();
+    static LossFunction CrossEntropy();
 
 private:
-    DistFuncType distFunc_;
-    GradFuncType gradFunc_;
+    PenaltyFunc penaltyFunc_;
+    GradientFunc gradientFunc_;
 };
 
 }  // namespace nn

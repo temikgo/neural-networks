@@ -4,7 +4,9 @@
 
 namespace nn {
 
-TestRunner::TestRunner() { tests_ = {Test::TestMSELoss()}; }
+TestRunner::TestRunner() {
+    tests_ = {Test::MNIST()};
+}
 
 void TestRunner::RunAllTests() const {
     for (const Test& test : tests_) {
@@ -12,8 +14,8 @@ void TestRunner::RunAllTests() const {
     }
 }
 
-void TestRunner::RunTests() const {
-    // TODO: add template running
+void TestRunner::RunTest(size_t id) const {
+    tests_[id].Run();
 }
 
 }  // namespace nn
