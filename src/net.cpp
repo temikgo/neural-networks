@@ -24,7 +24,8 @@ void Net::Train(const VectorBatch& xBatch, const VectorBatch& yBatch,
                 actualBatchSize = std::min(batchSize, xBatch.size() - j);
                 ZeroGradients();
             }
-            Fit(xBatch[j], yBatch[j], actualBatchSize, loss_function, optimizer);
+            Fit(xBatch[j], yBatch[j], actualBatchSize, loss_function,
+                optimizer);
             if (j % batchSize == actualBatchSize - 1) {
                 optimizer.DoStep(layers_);
             }
@@ -45,8 +46,8 @@ void Net::Fit(const Vector& x, const Vector& y, size_t batchSize,
     Vector grad = loss_function.GetGradient(layerOutputs.back(), y);
 
     for (int i = layers_.size() - 1; i >= 0; --i) {
-        grad = layers_[i].BackwardPass(layerOutputs[i], layerOutputs[i + 1], grad,
-                                batchSize);
+        grad = layers_[i].BackwardPass(layerOutputs[i], layerOutputs[i + 1],
+                                       grad, batchSize);
     }
 }
 

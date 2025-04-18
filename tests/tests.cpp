@@ -27,7 +27,7 @@ static void TestMNIST() {
     auto [xTrain, labelsTrain] = ReadCSV(kTrainPath, ',');
     auto [xTest, labelsTest] = ReadCSV(kTestPath, ',');
 
-    const int kTruncate = 5000;
+    const int kTruncate = 25000;
     xTrain = VectorBatch(xTrain.begin(), xTrain.begin() + kTruncate);
     labelsTrain = NumberBatch(labelsTrain.begin(), labelsTrain.begin() + kTruncate);
     VectorBatch yTrain = ConvertToOneHot(labelsTrain, kMinNumber, kMaxNumber);
@@ -46,7 +46,7 @@ static void TestMNIST() {
     }
 
     Net net(std::move(layers));
-    Optimizer optimizer(1e-4);
+    Optimizer optimizer(1e-3);
     LossFunction loss_function = LossFunction::CrossEntropy();
     net.Train(xTrain, yTrain, 128, 10, loss_function, optimizer);
 

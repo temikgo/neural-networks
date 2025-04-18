@@ -56,9 +56,8 @@ Vector Layer::BackwardPass(const Vector& x, const Vector& y, const Vector& u,
     return A_.transpose() * (jacobian * u);
 }
 
-void Layer::Update(
-    std::function<void(Matrix&, const Matrix&)> AUpdater,
-    std::function<void(Vector&, const Vector&)> bUpdater) {
+void Layer::Update(std::function<void(Matrix&, const Matrix&)> AUpdater,
+                   std::function<void(Vector&, const Vector&)> bUpdater) {
     AUpdater(A_, AGrad_);
     bUpdater(b_, bGrad_);
 }
