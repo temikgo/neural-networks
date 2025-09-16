@@ -1,2 +1,9 @@
-# neural-networks
-neural networks from scratch
+# neural networks from scratch
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+./neural-networks
+```
