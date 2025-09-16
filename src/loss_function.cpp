@@ -8,49 +8,39 @@ LossFunction::LossFunction(PenaltyFunc&& penaltyFunc,
       gradientFunc_(std::move(gradientFunc)) {
 }
 
-Scalar LossFunction::GetPenalty(const Vector& z, const Vector& y) const {
+Scalar LossFunction::GetLoss(const Matrix& zBatch, const Matrix& yBatch) const {
     assert(penaltyFunc_ && "Loss function (forward) is not initialized");
-    return penaltyFunc_(z, y);
+    assert(zBatch.rows() == yBatch.rows() && zBatch.cols() == yBatch.cols());
+    return penaltyFunc_(zBatch, yBatch) / static_cast<Scalar>(zBatch.cols());
 }
 
-Scalar LossFunction::GetLoss(const VectorBatch& z, const VectorBatch& y) const {
-    Scalar total = 0;
-    for (size_t i = 0; i < z.size(); ++i) {
-        total += GetPenalty(z[i], y[i]);
-    }
-    return total / z.size();
-}
-
-Vector LossFunction::GetGradient(const Vector& z, const Vector& y) const {
+Matrix LossFunction::GetGradient(const Matrix& zBatch,
+                                 const Matrix& yBatch) const {
     assert(gradientFunc_ && "Loss function (backward) is not initialized");
-    return gradientFunc_(z, y);
+    assert(zBatch.rows() == yBatch.rows() && zBatch.cols() == yBatch.cols());
+    return gradientFunc_(zBatch, yBatch);
 }
 
-static Scalar MSEPenalty(const Vector& z, const Vector& y) {
-    return (z - y).squaredNorm();
+namespace {
+
+Scalar MSEPenalty(const Matrix& zBatch, const Matrix& yBatch) {
+    return (zBatch - yBatch).array().square().sum();
 }
 
-static Vector MSEGradient(const Vector& z, const Vector& y) {
-    return 2 * (z - y) / z.size();
+Matrix MSEGradient(const Matrix& zBatch, const Matrix& yBatch) {
+    return (2.0 / static_cast<Scalar>(zBatch.rows())) * (zBatch - yBatch);
 }
 
-static Scalar MAEPenalty(const Vector& z, const Vector& y) {
-    return (z - y).cwiseAbs().sum();
+Scalar MAEPenalty(const Matrix& zBatch, const Matrix& yBatch) {
+    return (zBatch - yBatch).array().abs().sum();
 }
 
-static Vector MAEGradient(const Vector& z, const Vector& y) {
-    return Vector((z - y).array().sign()) / z.size();
+Matrix MAEGradient(const Matrix& zBatch, const Matrix& yBatch) {
+    return (zBatch - yBatch).array().sign().matrix() /
+           static_cast<Scalar>(zBatch.rows());
 }
 
-static constexpr double eps = 1e-10;
-
-static Scalar CrossEntropyPenalty(const Vector& z, const Vector& y) {
-    return -(y.array() * (z.array() + eps).log()).sum();
-}
-
-static Vector CrossEntropyGradient(const Vector& z, const Vector& y) {
-    return Vector(-(y.array() / (z.array() + eps)));
-}
+}  // namespace
 
 LossFunction LossFunction::MSE() {
     return LossFunction(MSEPenalty, MSEGradient);
@@ -60,8 +50,14 @@ LossFunction LossFunction::MAE() {
     return LossFunction(MAEPenalty, MAEGradient);
 }
 
-LossFunction LossFunction::CrossEntropy() {
-    return LossFunction(CrossEntropyPenalty, CrossEntropyGradient);
+LossFunction LossFunction::CrossEntropy(Scalar epsilon) {
+    return LossFunction(
+        [epsilon](const Matrix& zBatch, const Matrix& yBatch) {
+            return -(yBatch.array() * (zBatch.array() + epsilon).log()).sum();
+        },
+        [epsilon](const Matrix& zBatch, const Matrix& yBatch) {
+            return (-(yBatch.array() / (zBatch.array() + epsilon))).matrix();
+        });
 }
 
 }  // namespace nn

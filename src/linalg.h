@@ -10,8 +10,6 @@ using Matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
 using Index = Eigen::Index;
 
-using VectorBatch = std::vector<Vector>;
-using MatrixBatch = std::vector<Matrix>;
-using NumberBatch = std::vector<int>;
+using RowVector = Eigen::Matrix<Scalar, 1, -1>;
 
 }  // namespace nn

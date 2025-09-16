@@ -4,17 +4,7 @@
 
 namespace nn {
 
-class Test {
-    using RunType = std::function<void()>;
-
-public:
-    Test(RunType&& runFunc_);
-    void Run() const;
-
-    static Test MNIST();
-
-private:
-    RunType runFunc_;
-};
+using Test = std::function<void()>;
+Test CreateMNISTTest();
 
 }  // namespace nn

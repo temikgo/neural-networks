@@ -1,54 +1,116 @@
 #include "net.h"
 
+#include "utils.h"
+
 namespace nn {
 
-Net::Net(std::vector<Layer>&& layers) {
-    assert(!layers.empty() && "Network layers are not initialized");
-    for (size_t i = 1; i < layers.size(); ++i) {
-        assert(layers[i - 1].GetOutputDim() == layers[i].GetInputDim() &&
-               "Layer dimension mismatch between consecutive layers");
+Scalar EpochMetrics::AvgLoss() const {
+    if (losses.empty()) {
+        return 0;
     }
-    layers_ = std::move(layers);
+    return std::accumulate(losses.begin(), losses.end(), Scalar(0)) /
+           losses.size();
 }
 
-void Net::Train(const VectorBatch& xBatch, const VectorBatch& yBatch,
-                size_t batchSize, size_t epochs,
-                const LossFunction& loss_function, const Optimizer& optimizer) {
-    assert(batchSize > 0 && "Batch size must be positive");
-    assert(epochs > 0 && "Number of epochs must be positive");
-    assert(xBatch.size() == yBatch.size() && "x and y must be same size");
-    for (size_t i = 0; i < epochs; ++i) {
-        size_t actualBatchSize;
-        for (size_t j = 0; j < xBatch.size(); ++j) {
-            if (j % batchSize == 0) {
-                actualBatchSize = std::min(batchSize, xBatch.size() - j);
-                ZeroGradients();
-            }
-            Fit(xBatch[j], yBatch[j], actualBatchSize, loss_function,
-                optimizer);
-            if (j % batchSize == actualBatchSize - 1) {
-                optimizer.DoStep(layers_);
-            }
+Scalar EpochMetrics::AvgAccuracy() const {
+    if (accuracies.empty()) {
+        return 0;
+    }
+    return std::accumulate(accuracies.begin(), accuracies.end(), Scalar(0)) /
+           accuracies.size();
+}
+
+bool Net::IsCorrect(const std::vector<Layer>& layers) const {
+    if (layers.empty()) {
+        return false;
+    }
+    for (size_t i = 1; i < layers.size(); ++i) {
+        if (layers[i - 1].GetOutputDim() != layers[i].GetInputDim()) {
+            return false;
         }
     }
+    return true;
 }
 
-void Net::Fit(const Vector& x, const Vector& y, size_t batchSize,
-              const LossFunction& loss_function, const Optimizer& optimizer) {
-    std::vector<Vector> layerOutputs;
+std::vector<int> Net::MatrixToLabelVector(const Matrix& m) {
+    const int cols = static_cast<int>(m.cols());
+    std::vector<int> labels;
+    labels.reserve(cols);
+
+    for (int j = 0; j < cols; ++j) {
+        Eigen::Index idx;
+        m.col(j).maxCoeff(&idx);
+        labels.push_back(static_cast<int>(idx));
+    }
+
+    return labels;
+}
+
+Net::Net(std::vector<Layer>&& layers) : layers_(std::move(layers)) {
+    assert(IsCorrect(layers_) && "Incorrect layer structure.");
+}
+
+TrainingHistory Net::Train(DataLoader& loader, size_t epochs,
+                           const LossFunction& loss_function,
+                           const Optimizer& optimizer) {
+    assert(epochs > 0 && "Number of epochs must be positive");
+    std::vector<Matrix> layerOutputs;
     layerOutputs.reserve(layers_.size() + 1);
-    layerOutputs.push_back(x);
+
+    TrainingHistory history;
+    history.reserve(epochs);
+
+    for (size_t i = 0; i < epochs; ++i) {
+        EpochMetrics epochMetrics;
+        TrainOneEpoch(loader, loss_function, optimizer, layerOutputs,
+                      &epochMetrics);
+        history.push_back(std::move(epochMetrics));
+    }
+
+    return history;
+}
+
+void Net::TrainOneEpoch(DataLoader& loader, const LossFunction& loss_function,
+                        const Optimizer& optimizer,
+                        std::vector<Matrix>& layerOutputs,
+                        EpochMetrics* epochMetrics) {
+    loader.Permute();
+    for (auto batch = loader.begin(); batch < loader.end(); ++batch) {
+        TrainOnBatch(*batch, loss_function, optimizer, layerOutputs,
+                     epochMetrics);
+    }
+}
+
+void Net::TrainOnBatch(const Batch& batch, const LossFunction& loss_function,
+                       const Optimizer& optimizer,
+                       std::vector<Matrix>& layerOutputs,
+                       EpochMetrics* epochMetrics) {
+    layerOutputs.clear();
+    layerOutputs.push_back(batch.x);
 
     for (const Layer& layer : layers_) {
         layerOutputs.push_back(layer.ForwardPass(layerOutputs.back()));
     }
 
-    Vector grad = loss_function.GetGradient(layerOutputs.back(), y);
+    if (epochMetrics) {
+        Scalar batchLoss = loss_function.GetLoss(layerOutputs.back(), batch.y);
+        Scalar batchAcc = Accuracy(MatrixToLabelVector(layerOutputs.back()),
+                                   MatrixToLabelVector(batch.y));
+        epochMetrics->losses.push_back(batchLoss);
+        epochMetrics->accuracies.push_back(batchAcc);
+    }
+
+    for (size_t i = 0; i < layers_.size(); ++i) {
+        layers_[i].ZeroGradients();
+    }
+
+    Matrix grad = loss_function.GetGradient(layerOutputs.back(), batch.y);
 
     for (int i = layers_.size() - 1; i >= 0; --i) {
-        grad = layers_[i].BackwardPass(layerOutputs[i], layerOutputs[i + 1],
-                                       grad, batchSize);
+        grad =
+            layers_[i].BackwardPass(layerOutputs[i], layerOutputs[i + 1], grad);
     }
+    optimizer.DoStep(layers_);
 }
 
 Vector Net::Predict(const Vector& x) const {
@@ -59,19 +121,12 @@ Vector Net::Predict(const Vector& x) const {
     return y;
 }
 
-VectorBatch Net::Predict(const VectorBatch& xBatch) const {
-    VectorBatch yBatch;
-    yBatch.reserve(xBatch.size());
-    for (const Vector& x : xBatch) {
-        yBatch.push_back(Predict(x));
+Matrix Net::Predict(const Matrix& xBatch) const {
+    Matrix yBatch = xBatch;
+    for (const Layer& layer : layers_) {
+        yBatch = layer.ForwardPass(yBatch);
     }
     return yBatch;
-}
-
-void Net::ZeroGradients() {
-    for (size_t i = 0; i < layers_.size(); ++i) {
-        layers_[i].ZeroGradients();
-    }
 }
 
 }  // namespace nn

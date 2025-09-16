@@ -5,13 +5,13 @@
 namespace nn {
 
 class ActivationFunction {
-    using ForwardFunc = std::function<Vector(const Vector&)>;
-    using BackwardFunc = std::function<Matrix(const Vector&)>;
+    using ForwardFunc = std::function<Matrix(const Matrix&)>;
+    using BackwardFunc = std::function<Matrix(const Matrix&, const Matrix&)>;
 
 public:
     ActivationFunction(ForwardFunc&& function, BackwardFunc&& derivative);
-    Vector Compute(const Vector& x) const;
-    Matrix ComputeGradient(const Vector& x) const;
+    Matrix Forward(const Matrix& xBatch) const;
+    Matrix Backward(const Matrix& yBatch, const Matrix& uBatch) const;
 
     static ActivationFunction Id();
     static ActivationFunction Sigmoid();

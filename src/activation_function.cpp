@@ -1,7 +1,5 @@
 #include "activation_function.h"
 
-#include "src/linalg.h"
-
 namespace nn {
 
 ActivationFunction::ActivationFunction(ForwardFunc&& function,
@@ -9,61 +7,81 @@ ActivationFunction::ActivationFunction(ForwardFunc&& function,
     : function_(std::move(function)), derivative_(std::move(derivative)) {
 }
 
-Vector ActivationFunction::Compute(const Vector& x) const {
+Matrix ActivationFunction::Forward(const Matrix& xBatch) const {
     assert(function_ && "Activation function (forward) is not initialized");
-    return function_(x);
+    return function_(xBatch);
 }
 
-Matrix ActivationFunction::ComputeGradient(const Vector& x) const {
+Matrix ActivationFunction::Backward(const Matrix& yBatch,
+                                    const Matrix& uBatch) const {
     assert(derivative_ && "Activation function (backward) is not initialized");
-    return derivative_(x);
+    return derivative_(yBatch, uBatch);
 }
 
-static Vector IdFunction(const Vector& x) {
+namespace {
+
+Matrix IdFunction(const Matrix& x) {
     return x;
 }
 
-static Matrix IdDerivative(const Vector& x) {
-    return Matrix::Identity(x.size(), x.size());
+Matrix IdDerivative(const Matrix& y, const Matrix& u) {
+    return u;
 }
 
-static Vector SigmoidFunction(const Vector& x) {
+Matrix SigmoidFunction(const Matrix& x) {
     return x.unaryExpr([](Scalar xi) { return 1 / (1 + exp(-xi)); });
 }
 
-static Matrix SigmoidDerivative(const Vector& x) {
-    Vector y = SigmoidFunction(x);
-    return (y.cwiseProduct(Vector::Ones(x.size()) - y)).asDiagonal();
+Matrix SigmoidDerivative(const Matrix& y, const Matrix& u) {
+    return (y.array() * (1 - y.array())).matrix().array() * u.array();
 }
 
-static Vector TanhFunction(const Vector& x) {
+Matrix TanhFunction(const Matrix& x) {
     return x.unaryExpr([](Scalar xi) { return tanh(xi); });
 }
 
-static Matrix TanhDerivative(const Vector& x) {
-    Vector y = TanhFunction(x);
-    Vector l = Vector::Ones(x.size()) - y;
-    Vector r = Vector::Ones(x.size()) + y;
-    return (l.cwiseProduct(r)).asDiagonal();
+Matrix TanhDerivative(const Matrix& y, const Matrix& u) {
+    return (1 - y.array().square()).matrix().array() * u.array();
 }
 
-static Vector ReLUFunction(const Vector& x) {
+Matrix ReLUFunction(const Matrix& x) {
     return x.cwiseMax(0);
 }
 
-static Matrix ReLUDerivative(const Vector& x) {
-    return Matrix((x.array() > 0).cast<Scalar>().matrix().asDiagonal());
+Matrix ReLUDerivative(const Matrix& y, const Matrix& u) {
+    Matrix mask = (y.array() > Scalar(0)).cast<Scalar>().matrix();
+    return mask.array() * u.array();
 }
 
-static Vector SoftmaxFunction(const Vector& x) {
-    Vector exps = (x.array() - x.maxCoeff()).exp();
-    return exps / exps.sum();
+Matrix SoftmaxFunction(const Matrix& x) {
+    const int cols = static_cast<int>(x.cols());
+    const int rows = static_cast<int>(x.rows());
+    Matrix x_shifted(rows, cols);
+    RowVector col_max = x.colwise().maxCoeff();
+    for (int j = 0; j < cols; ++j) {
+        x_shifted.col(j) = x.col(j).array() - col_max(j);
+    }
+    Matrix exps = x_shifted.array().exp();
+    RowVector sums = exps.colwise().sum();
+    Matrix out(rows, cols);
+    for (int j = 0; j < cols; ++j) {
+        out.col(j) = exps.col(j).array() / sums(j);
+    }
+    return out;
 }
 
-static Matrix SoftmaxDerivative(const Vector& x) {
-    Vector y = SoftmaxFunction(x);
-    return Matrix(y.asDiagonal()) - y * y.transpose();
+Matrix SoftmaxDerivative(const Matrix& y, const Matrix& u) {
+    const int cols = static_cast<int>(y.cols());
+    const int rows = static_cast<int>(y.rows());
+    RowVector dots = (y.array() * u.array()).colwise().sum();
+    Matrix tmp(rows, cols);
+    for (int j = 0; j < cols; ++j) {
+        tmp.col(j) = u.col(j).array() - dots(j);
+    }
+    return y.array() * tmp.array();
 }
+
+}  // namespace
 
 ActivationFunction ActivationFunction::Id() {
     return ActivationFunction(IdFunction, IdDerivative);

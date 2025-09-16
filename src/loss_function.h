@@ -5,19 +5,18 @@
 namespace nn {
 
 class LossFunction {
-    using PenaltyFunc = std::function<Scalar(const Vector&, const Vector&)>;
-    using GradientFunc = std::function<Vector(const Matrix&, const Matrix&)>;
+    using PenaltyFunc = std::function<Scalar(const Matrix&, const Matrix&)>;
+    using GradientFunc = std::function<Matrix(const Matrix&, const Matrix&)>;
 
 public:
     LossFunction(PenaltyFunc&& penaltyFunc, GradientFunc&& gradientFunc);
 
-    Scalar GetPenalty(const Vector& z, const Vector& y) const;
-    Scalar GetLoss(const VectorBatch& z, const VectorBatch& y) const;
-    Vector GetGradient(const Vector& z, const Vector& y) const;
+    Scalar GetLoss(const Matrix& zBatch, const Matrix& yBatch) const;
+    Matrix GetGradient(const Matrix& zBatch, const Matrix& yBatch) const;
 
     static LossFunction MSE();
     static LossFunction MAE();
-    static LossFunction CrossEntropy();
+    static LossFunction CrossEntropy(Scalar epsilon = 1e-10);
 
 private:
     PenaltyFunc penaltyFunc_;

@@ -1,19 +1,32 @@
 #pragma once
 
-#include <string>
+#include <filesystem>
+#include <iostream>
 
 #include "linalg.h"
+#include "net.h"
 
 namespace nn {
 
 Matrix GenerateMatrix(Index n, Index m);
 Vector GenerateVector(Index n);
 
-std::pair<VectorBatch, NumberBatch> ReadCSV(const std::string& path,
-                                            char delimiter);
+Scalar Accuracy(const std::vector<int>& predicted,
+                const std::vector<int>& actual);
+Scalar WeightedAccuracy(const std::vector<int>& predicted,
+                        const std::vector<int>& actual);
+Scalar Precision(const std::vector<int>& predicted,
+                 const std::vector<int>& actual, int label);
+Scalar Recall(const std::vector<int>& predicted, const std::vector<int>& actual,
+              int label);
+Scalar F1Score(const std::vector<int>& predicted,
+               const std::vector<int>& actual, int label);
+Matrix ConfusionMatrix(const std::vector<int>& predicted,
+                       const std::vector<int>& actual, size_t size);
 
-VectorBatch ConvertToOneHot(const NumberBatch& labels, int min, int max);
-
-Scalar Accuracy(const NumberBatch& z, const NumberBatch& y);
+void PrintTrainingHistory(const TrainingHistory& history,
+                          std::ostream& out = std::cout);
+bool SaveTrainingHistoryCSV(const TrainingHistory& history,
+                            const std::filesystem::path& path);
 
 }  // namespace nn

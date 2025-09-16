@@ -2,10 +2,11 @@
 
 namespace nn {
 
-Optimizer::Optimizer(Scalar learningRate) : learningRate_(learningRate) {};
+Optimizer::Optimizer(Scalar learningRate) : learningRate_(learningRate) {
+}
 
 void Optimizer::DoStep(std::vector<Layer>& layers) const {
-    const Scalar maxGradNorm = 1;
+    constexpr Scalar maxGradNorm = 1;
 
     for (size_t i = 0; i < layers.size(); ++i) {
         layers[i].Update(

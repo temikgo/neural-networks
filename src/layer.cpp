@@ -4,24 +4,14 @@
 
 namespace nn {
 
-Layer::Layer(Index inputDim, Index outputDim)
-    : Layer(inputDim, outputDim, GenerateMatrix(outputDim, inputDim),
-            GenerateVector(outputDim), ActivationFunction::Id()) {
+Layer::Layer(In inputDim, Out outputDim, ActivationFunction&& sigma)
+    : Layer(GenerateMatrix(outputDim, inputDim), GenerateVector(outputDim),
+            std::move(sigma)) {
 }
 
-Layer::Layer(Index inputDim, Index outputDim, ActivationFunction&& sigma)
-    : Layer(inputDim, outputDim, GenerateMatrix(outputDim, inputDim),
-            GenerateVector(outputDim), std::move(sigma)) {
-}
-
-Layer::Layer(Index inputDim, Index outputDim, Matrix&& A, Vector&& b)
-    : Layer(inputDim, outputDim, std::move(A), std::move(b),
-            ActivationFunction::Id()) {
-}
-
-Layer::Layer(Index inputDim, Index outputDim, Matrix&& A, Vector&& b,
-             ActivationFunction&& sigma)
+Layer::Layer(Matrix&& A, Vector&& b, ActivationFunction&& sigma)
     : A_(std::move(A)), b_(std::move(b)), sigma_(std::move(sigma)) {
+    assert(A_.rows() == b_.size() && "Layer::A and Layer::B size mismatch.");
     A_.normalize();
     b_.normalize();
 }
@@ -39,21 +29,18 @@ void Layer::ZeroGradients() {
     bGrad_ = Vector::Zero(GetOutputDim());
 }
 
-Vector Layer::ForwardPass(const Vector& x) const {
-    return sigma_.Compute(A_ * x + b_);
+Matrix Layer::ForwardPass(const Matrix& xBatch) const {
+    return sigma_.Forward((A_ * xBatch).colwise() + b_);
 }
 
-Vector Layer::BackwardPass(const Vector& x, const Vector& y, const Vector& u,
-                           size_t batchSize) {
-    Matrix jacobian = sigma_.ComputeGradient(y);
+Matrix Layer::BackwardPass(const Matrix& xBatch, const Matrix& yBatch,
+                           const Matrix& uBatch) {
+    Matrix delta = sigma_.Backward(yBatch, uBatch);
 
-    Matrix AGrad = (jacobian * u) * x.transpose();
-    Vector bGrad = jacobian * u;
+    AGrad_ += (delta * xBatch.transpose()) / xBatch.cols();
+    bGrad_ += delta.rowwise().sum() / xBatch.cols();
 
-    AGrad_ += AGrad / batchSize;
-    bGrad_ += bGrad / batchSize;
-
-    return A_.transpose() * (jacobian * u);
+    return A_.transpose() * delta;
 }
 
 void Layer::Update(std::function<void(Matrix&, const Matrix&)> AUpdater,

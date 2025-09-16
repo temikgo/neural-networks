@@ -10,6 +10,8 @@ class TestRunner {
 public:
     TestRunner();
 
+    size_t GetTestCount() const;
+
     void RunAllTests() const;
     void RunTest(size_t id) const;
 
