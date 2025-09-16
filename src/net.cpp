@@ -51,7 +51,7 @@ Net::Net(std::vector<Layer>&& layers) : layers_(std::move(layers)) {
 }
 
 TrainingHistory Net::Train(DataLoader& loader, size_t epochs,
-                           const LossFunction& loss_function,
+                           const LossFunction& lossFunction,
                            const Optimizer& optimizer) {
     assert(epochs > 0 && "Number of epochs must be positive");
     std::vector<Matrix> layerOutputs;
@@ -62,7 +62,7 @@ TrainingHistory Net::Train(DataLoader& loader, size_t epochs,
 
     for (size_t i = 0; i < epochs; ++i) {
         EpochMetrics epochMetrics;
-        TrainOneEpoch(loader, loss_function, optimizer, layerOutputs,
+        TrainOneEpoch(loader, lossFunction, optimizer, layerOutputs,
                       &epochMetrics);
         history.push_back(std::move(epochMetrics));
     }
@@ -70,18 +70,18 @@ TrainingHistory Net::Train(DataLoader& loader, size_t epochs,
     return history;
 }
 
-void Net::TrainOneEpoch(DataLoader& loader, const LossFunction& loss_function,
+void Net::TrainOneEpoch(DataLoader& loader, const LossFunction& lossFunction,
                         const Optimizer& optimizer,
                         std::vector<Matrix>& layerOutputs,
                         EpochMetrics* epochMetrics) {
     loader.Permute();
     for (auto batch = loader.begin(); batch < loader.end(); ++batch) {
-        TrainOnBatch(*batch, loss_function, optimizer, layerOutputs,
+        TrainOnBatch(*batch, lossFunction, optimizer, layerOutputs,
                      epochMetrics);
     }
 }
 
-void Net::TrainOnBatch(const Batch& batch, const LossFunction& loss_function,
+void Net::TrainOnBatch(const Batch& batch, const LossFunction& lossFunction,
                        const Optimizer& optimizer,
                        std::vector<Matrix>& layerOutputs,
                        EpochMetrics* epochMetrics) {
@@ -93,7 +93,7 @@ void Net::TrainOnBatch(const Batch& batch, const LossFunction& loss_function,
     }
 
     if (epochMetrics) {
-        Scalar batchLoss = loss_function.GetLoss(layerOutputs.back(), batch.y);
+        Scalar batchLoss = lossFunction.GetLoss(layerOutputs.back(), batch.y);
         Scalar batchAcc = Accuracy(MatrixToLabelVector(layerOutputs.back()),
                                    MatrixToLabelVector(batch.y));
         epochMetrics->losses.push_back(batchLoss);
@@ -104,7 +104,7 @@ void Net::TrainOnBatch(const Batch& batch, const LossFunction& loss_function,
         layers_[i].ZeroGradients();
     }
 
-    Matrix grad = loss_function.GetGradient(layerOutputs.back(), batch.y);
+    Matrix grad = lossFunction.GetGradient(layerOutputs.back(), batch.y);
 
     for (int i = layers_.size() - 1; i >= 0; --i) {
         grad =

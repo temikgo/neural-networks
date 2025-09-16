@@ -23,7 +23,7 @@ public:
     Net(std::vector<Layer>&& layers);
 
     TrainingHistory Train(DataLoader& loader, size_t epochs,
-                          const LossFunction& loss_function,
+                          const LossFunction& lossFunction,
                           const Optimizer& optimizer);
     Vector Predict(const Vector& x) const;
     Matrix Predict(const Matrix& xBatch) const;
@@ -33,11 +33,11 @@ private:
 
     static std::vector<int> MatrixToLabelVector(const Matrix& m);
 
-    void TrainOneEpoch(DataLoader& loader, const LossFunction& loss_function,
+    void TrainOneEpoch(DataLoader& loader, const LossFunction& lossFunction,
                        const Optimizer& optimizer,
                        std::vector<Matrix>& layerOutputs,
                        EpochMetrics* epochMetrics);
-    void TrainOnBatch(const Batch& batch, const LossFunction& loss_function,
+    void TrainOnBatch(const Batch& batch, const LossFunction& lossFunction,
                       const Optimizer& optimizer,
                       std::vector<Matrix>& layerOutputs,
                       EpochMetrics* epochMetrics);
